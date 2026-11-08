@@ -1,4 +1,4 @@
-# civ7-save-tools
+# civ7-save-decoder
 
 文明7 (.Civ7Save) 存档逆向工具集。解析压缩体内的游戏数据：文明名单、科技/文化/金币产量曲线、战争历史、城市位置、建造编年史等。
 
@@ -12,9 +12,9 @@
 请帮我分析这个文明7存档文件。
 
 按以下步骤操作：
-1. 克隆工具仓库：git clone https://github.com/YOUR_USERNAME/civ7-save-tools.git
-2. 阅读 civ7-save-tools/AGENTS.md 了解工具用法和已知限制
-3. 运行 python3 civ7-save-tools/tools/pipeline.py "我的存档文件路径"
+1. 克隆工具仓库：git clone https://github.com/YOUR_USERNAME/civ7-save-decoder.git
+2. 阅读 civ7-save-decoder/AGENTS.md 了解工具用法和已知限制
+3. 运行 python3 civ7-save-decoder/tools/pipeline.py "我的存档文件路径"
 4. 基于 AGENTS.md 中描述的数据格式，提取并分析：
    - 各文明实力排名（科技/文化/金/军事）
    - 战争历史与外交态势
@@ -41,8 +41,8 @@
 ## 快速开始（手动）
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/civ7-save-tools.git
-python3 civ7-save-tools/tools/pipeline.py "你的存档.Civ7Save"
+git clone https://github.com/YOUR_USERNAME/civ7-save-decoder.git
+python3 civ7-save-decoder/tools/pipeline.py "你的存档.Civ7Save"
 ```
 
 ## 仓库结构
