@@ -173,17 +173,20 @@ MOD_SHIPYARD_UNIT_PRODUCTION: Domain=DOMAIN_SEA, Percent=10       ← 船坞海�
 = ASCII "FXSBLKED"，写在 0x402/0x405 类型值之后。社区工具的"marker→FXSBLKED→+8→值"
 导航本质是跳过前一个字符串值的终止符。
 
-### 6.3 块（TypedVariantMap 序列化）
+### 6.3 块（TypedVariantMap 序列化）——Phase1 修订
 
 ```
-块 = [u32 hash?] [u32 1] [u32 -1] [u32 1] [u32 1] [u32 count]
-     [count × (u32 hash, u32 type)]        ← schema 条目
-     [values 按条目顺序]                    ← 值区
+块 = [u32 A] [u32 1]? [u32 -1] [u32 1] [u32 1] [u32 count]
+     [count × (u32 hash, u32 type)]        ← schema 条目（type 低16位=类型，高16位=modifier）
+     [values 按条目顺序]                    ← 值区（按条目序、按类型定长消费，无多余字节）
+     [8B "FXSBLKED"]?                       ← 块终止符（多数块有）
 ```
 
-- hash 可省略（根块），`hash=1` 视为根
-- hash = 块对象名的 CRC32（如增长对象 `0x635c5324`）
-- 块间无分隔符；前一个字符串值的 FXSBLKED 终止符天然分隔
+- `WriteSchema` 反汇编固定输出 `[-1][1][schema_id][count]`；schema_id 为每流计数器（捕获流从 1 起）。
+- 前置 u32：`[-1]` 之前可有 0/1/2 个上下文 u32（成员键 CRC / 对象实例 id / 流版本 1），顺序解析不回扫。
+- 值编码：0x402=`[len][bytes][pad到4][FXSBLKED]`；0x400/0x403=`[size][bytes]`；0x407=u32 raw(÷256)；
+  Bool=1 字节；字符串列表=`[count][count×(len,bytes)]`（无对齐无终止符）。
+- 0x402 容器形：Properties/Components 等 `[len=1]["\x00"]` 后无终止符，直接跟子块流（见 §6.6）。
 
 ### 6.4 已验证的运行时数据（AutoSave_02_0004，回合4）
 
@@ -216,8 +219,18 @@ OverGrowthCount / TurnLastGrowth / lastTurnConsidered / NextGrowthFoodTresholdDi
 - 回合1存档 recCount=0；回合4存档 recCount=32 = 行1(5)+行2(13)+行3(14) ✓
 - TOTALGOLD 行1 = (1,9000)(2,688)(3,623)(4,1221) 与金币标记逐一吻合 ✓
 
-### 6.6 待细化（已知未知）
+### 6.6 Phase1 结题与新遗留（2026-11-09，详见 docs/notes/phase1-*.md）
 
-- size-4 块中"引用索引"与"FixedPoint 值"的区分规则（部分字段存句柄）
-- NextGrowthFoodThreshold(411.97) 与面板"需要食物 4614"的换算关系
-- 值区字段与 schema 条目的精确对位（部分块存在额外字节）
+**已解决**：
+- size-4 块"句柄 vs 数值"区分规则（按字段声明语义 + 连号批次 + 对象图区间二次确认；
+  CurrentFood/MovesRemaining 为 FP8 值，Threshold/Percent 系列为对象句柄）。
+- 值区与 schema 对位：按条目序定长消费，无多余字节（376 块实测 100% 对位）。
+
+**更正**：旧条目"NextGrowthFoodThreshold(411.97) ↔ 面板4614 换算"前提有误——
+411.97 是句柄 105465 的巧合 FP8 读数；面板"需要食物"（149/4614）是运行时由句柄引用的
+修正对象计算的，存档中不存在 149×256 或 4614 的原值。公式未还原。
+
+**新遗留**：
+- 0x402 容器形（Properties/Components/Armies/Controllers 等对象列表）：`[len=1]["\x00"]`
+  后无终止符，直接跟自带 FXSBLKED 的子块流；子块可遍历，容器终点无计数前缀（1.67MB 待定界）。
+- 大裸区容器：字符串调色板（前缀共享压缩）与地图图元区（~375KB），非 VariantValue 编码。
