@@ -4,6 +4,26 @@
 
 > 目前没有任何公开工具能解析 Civ7 存档压缩体内的游戏数据。本仓库填补这个空白。
 
+## 用 AI 分析你的存档
+
+把下面这段话复制给你的 AI Agent（Claude、ChatGPT 等支持代码执行的工具），它会自动下载工具并分析你的存档：
+
+```text
+请帮我分析这个文明7存档文件。
+
+按以下步骤操作：
+1. 克隆工具仓库：git clone https://github.com/YOUR_USERNAME/civ7-save-tools.git
+2. 阅读 civ7-save-tools/AGENTS.md 了解工具用法和已知限制
+3. 运行 python3 civ7-save-tools/tools/pipeline.py "我的存档文件路径"
+4. 基于 AGENTS.md 中描述的数据格式，提取并分析：
+   - 各文明实力排名（科技/文化/金/军事）
+   - 战争历史与外交态势
+   - 胜利路径建议（科技/军事/经济/文化四选一）
+5. 给我一份完整的战局分析报告
+```
+
+> 将 `YOUR_USERNAME` 替换为实际的 GitHub 用户名，将 `"我的存档文件路径"` 替换为你的 .Civ7Save 文件路径。
+
 ## 解析进度
 
 | 类别 | 状态 |
@@ -18,17 +38,17 @@
 
 > ✅ 已完成 · ⚠️ 部分完成 · ⬜ 未解 — 逐项详情见 [docs/parsing-status.md](docs/parsing-status.md)
 
-## 快速开始
+## 快速开始（手动）
 
 ```bash
-python3 tools/pipeline.py "你的存档.Civ7Save"
+git clone https://github.com/YOUR_USERNAME/civ7-save-tools.git
+python3 civ7-save-tools/tools/pipeline.py "你的存档.Civ7Save"
 ```
-
-输出示例：时代、回合、日期、全部文明名单、科技/文化/金币/战争/奇观/建城数据。
 
 ## 仓库结构
 
 ```
+├── AGENTS.md               # AI Agent 使用指南（自动被 AI 工具读取）
 ├── tools/                  # 解析脚本
 │   ├── pipeline.py         # 一键解压 + 头部解析 + 数据集提取
 │   ├── civ7parse.py        # 头部 chunk 格式解析器
