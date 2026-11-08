@@ -132,3 +132,92 @@ MOD_SHIPYARD_UNIT_PRODUCTION: Domain=DOMAIN_SEA, Percent=10       ← 船坞海�
 - FXS 属性包的二进制值结构（VariantValue 序列化）——阻塞了城市人口、单位、外交态度的逐城读取
 - 名人堂详细记录的分隔符——多城数据堆叠问题的最后一步
 - 玩家当前生效政策列表（运行时哈希态）
+
+## 6. FXS 属性包（FXSBLKED / DelineatedData）——已破解
+
+> 2026-11-09 逆向完成。方法：游戏本体二进制（CivilizationVII，带完整 C++ 符号）反汇编
+> `Data::VariantValue::Serialize`、`Serialization::DelineatedData::*`、`Crypto::CRC::CalcString`
+> 等函数，逐条与存档字节对照验证。
+
+### 6.1 字段名哈希（MakeKey）
+
+**CRC32**，参数：多项式 `0xEDB88320`（标准 CRC-32），初值 `0xFFFFFFFF`，**无终值异或**，
+输入 = 字段名的 ASCII 字节（camelCase，如 `CurrentFood`、`locInstigatingPlayerWarName`）。
+
+验证对：`"Name"→0x01ee2ec7`、`"ID"→0xee2c9cc5`、`"GAME_TURN"→0xbde62c9d`。
+（社区猜的 FNV 与全大写命名均错误。）
+
+### 6.2 VariantValueType 类型枚举（从二进制类型表整体提取）
+
+| 值 | 类型 | 值 | 类型 |
+|---|---|---|---|
+| 0 | None | 14 | VariantObject |
+| 1-13 | Bool, Char, Char16, Int8, UInt8, Int16, UInt16, Int(4B), UInt(4B), Int64, UInt64, Float, Double | 15-20 | Pair{Int16,UInt16,Int32,Int64,Float,Double} |
+| 27 | VariantMap | 21-26 | Triplet{同上} |
+| 28 | VariantVector | 29 | TypedVariantMap |
+| 30 | TypedVariantVector | 31 | TypedVariantVectorMap |
+| 32 | GUID | | |
+
+**0x400 修饰位**（`base | 0x400`）语义（来自 `IsBlockType` / `IsBlockTypeWithSize` /
+`HasTerminator64` 反汇编）：
+
+| 标签 | 磁盘编码 |
+|---|---|
+| 0x400 / 0x403 | 尺寸块：`[u32 size][size 字节]` |
+| 0x402 | 字符串：`[u32 len][bytes][u64 终止符]`，终止符 = ASCII `"FXSBLKED"`（8 字节） |
+| 0x405 | 带终止符块 |
+| 0x407 | **FixedPoint<8>**：u32 raw，真实值 = raw/256（金币/影响力/产量全用此编码） |
+| 0x400,0x401,0x403,0x404 | "块类型"（可含嵌套内容） |
+
+**FXSBLKED 魔数真相**：不是块头，而是 `Terminator64` 的默认值 = u64 `0x45444B4C58534246`
+= ASCII "FXSBLKED"，写在 0x402/0x405 类型值之后。社区工具的"marker→FXSBLKED→+8→值"
+导航本质是跳过前一个字符串值的终止符。
+
+### 6.3 块（TypedVariantMap 序列化）
+
+```
+块 = [u32 hash?] [u32 1] [u32 -1] [u32 1] [u32 1] [u32 count]
+     [count × (u32 hash, u32 type)]        ← schema 条目
+     [values 按条目顺序]                    ← 值区
+```
+
+- hash 可省略（根块），`hash=1` 视为根
+- hash = 块对象名的 CRC32（如增长对象 `0x635c5324`）
+- 块间无分隔符；前一个字符串值的 FXSBLKED 终止符天然分隔
+
+### 6.4 已验证的运行时数据（AutoSave_02_0004，回合4）
+
+**金币/影响力**（社区工具的标记导航，已验证）：
+`[GOLD_MARKER 0x37991e23] → 下一个 FXSBLKED → +8 → u32 FixedPoint<8>`。
+6 个主要文明读出 8585/1835/987/780/798/477，人类玩家 8585 + 面板收入 385.9 = 8971 ✓。
+
+**城市增长记录**（44 个定居点全解析，块 hash `0x635c5324`）：
+字段 = CurrentFood / CurrentStarvation / GrowthType / MigrationCityID / ProjectType /
+TurnLastNotifyStarving / NextGrowthFoodThreshold(Base) / UnitTypeFoodMods /
+AllUnitTypesFoodMod / PercentGrowthAfterWorkerPlacement / PercentGrowthAfterRuralPlacement /
+OverGrowthCount / TurnLastGrowth / lastTurnConsidered / NextGrowthFoodTresholdDiscount。
+
+雅典（第一个块）CurrentFood = 42214/256 = **164.898 = 面板 339.5 − 174.6**（存档在回合4
+开始时点，面板在回合中，差值 = 一回合食物）✓。注意部分 size-4 块存的是递增引用索引
+（105423..105428 连号）而非数值，需按字段区分。
+
+**城市运行时记录**：`[u32 keyLen]["LOC_CITY_NAME_GREECE1"][FXSBLKED]` 后紧跟值序列：
+雅典 = `[4][38]`（人口）→ `[4][0]` → 6 个引用索引 → 嵌套对象……与 GAME_SUMMARY 的
+城市名注册表同构。
+
+### 6.5 回放数据集（GAME_SUMMARY 内，已完整破解）
+
+```
+[u32 keyLen]["REPLAYDATASET_X"][u32 valLen]["LOC_HOF_GRAPH_..."][u32 0]
+[u8 1][u8 1|2][u8 0][u8 0][u8 0][u64 recCount]     ← 13 字节头
+[recCount × (u32 col, u32 row, u32 val)]            ← col=文明slot, row=时代内回合
+```
+- 数值 = FixedPoint<8>（raw/256）
+- 回合1存档 recCount=0；回合4存档 recCount=32 = 行1(5)+行2(13)+行3(14) ✓
+- TOTALGOLD 行1 = (1,9000)(2,688)(3,623)(4,1221) 与金币标记逐一吻合 ✓
+
+### 6.6 待细化（已知未知）
+
+- size-4 块中"引用索引"与"FixedPoint 值"的区分规则（部分字段存句柄）
+- NextGrowthFoodThreshold(411.97) 与面板"需要食物 4614"的换算关系
+- 值区字段与 schema 条目的精确对位（部分块存在额外字节）
