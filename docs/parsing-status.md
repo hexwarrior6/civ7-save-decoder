@@ -82,16 +82,21 @@
 | 子区域 | 状态 | 备注 |
 |---|:---:|---|
 | 金币/影响力（每文明） | ✅ | FP8；E0 GoldBalance=7680→30.0 ✓顶栏 |
-| 城市增长（17 字段×每城） | ✅ | CurrentFood=40.0 ✓面板；阈值字段=句柄（U2 更正） |
+| 城市增长（17 字段×每城） | ✅ | CurrentFood=40.0 ✓面板；阈值字段=句柄（U2 更正）；⚠️ 现代档 44 块 CurrentFood=0 疑点见 phase2-cities.md §7 |
 | 城市实例块（29 字段：人口/位置/归属） | ✅ | HighestPopulation=[4][6] ✓人口6 |
+| **城市人口分项（Phase2）** | ✅ | Rural/Urban/Worker 句柄→对象图节点 FP8；44/44 城 乡+市+专==总数（雅典 38=17+20+1 ✓圣彼得堡 6=4+2+0 ✓） |
+| **城市归属 OwnerIDHistory（Phase2）** | ✅ | [count×(slot,1,turn,hash)]；44 城归属分组零冲突；4 种易主 hash 细分未解 |
+| **城市提取器 tools/cities.py（Phase2）** | ✅ | `python3 -I tools/cities.py <body.bin> <out.json>`；名字/坐标/人口/增长/归属/连接数；详见 docs/notes/phase2-cities.md |
 | 单位块（47 字段：位置/朝向/视野/HP） | ✅ | Location blob8=(x,y)、MovesRemaining FP8=3/3 ✓、Damage=0→HP100 |
 | 单位命令缓存块（14 字段镜像） | ✅ | Location/MovesRemaining/HasMoved 与单位块一致 |
 | 玩家实例块（56 字段） | ✅ | ID/IsAlive/Civilization 等 |
 | 引用句柄 vs 数值（size-4 块） | ✅ | U1 关闭：按字段语义+连号+图区间二次确认，见 phase1-unknowns.md |
+| **对象图节点语法（Phase2 部分破解）** | ⚠️ | 节点=[tag][id][hashA][t2]…[id-again]；标量节点(FP8)/零值节点/引用载荷已验证；流级语法与节点 class 语义未解 |
 | 0x402 容器形（Properties/Components 子流） | ⚠️ | [len=1] 无终止符+子块流；子块可遍历，容器边界未定 |
-| 城市产量明细（CityYields/BaseYields） | ⚠️ | 字段已定位，值区对位待细化 |
-| 幸福度/外交/宗教数值 | ⚠️ | 块已可枚举（如 DiplomaticModifiers 块），逐字段语义待标定 |
-| 增长阈值面板值（149/4614） | ❌ | 运行时由句柄对象计算，落盘无原值；公式未还原 |
+| 城市产量明细（七项每回合值） | ❌ | Yields[7] 等为修正对象 DAG 句柄；无落盘原值（174.6/9.0 全文无）；公式未解 |
+| 幸福度分档值（"愉快"0~20） | ❌ | Unhappiness/SuplusHappiness=句柄；图中无 0~20 标量（值域 1–10） |
+| 建筑清单（逐城） | ❌ | Constructibles 0x402 容器未定界；建造编年史逐城归属分隔符未解 |
+| 增长阈值面板值（149/4614） | ❌ | 运行时由句柄对象计算，落盘无原值；公式未还原（U2） |
 
 ### 5. 已知的格式怪癖
 
@@ -104,15 +109,17 @@
 
 ## 突破方向
 
-**Phase1 后剩余瓶颈（按价值排序）**：
+**Phase2 后剩余瓶颈（按价值排序）**：
 
-1. **0x402 容器形边界**：Properties/Components 等对象列表字段无计数前缀，
-   需靠外层结构（父块其余字段/下一 sibling 锚）定界，才能把 1.67MB 未解区收进树。
-2. **大裸区容器**：字符串调色板（前缀共享压缩，"UIDL/Turn/icto" 式）与地图图元区
-   （0x4d6dd0 起 375KB）——非 VariantValue 编码，含地形/视野原始数据。
-3. **增长阈值公式**：NextGrowthFoodThreshold 等为句柄，面板值 149/4614 运行时算出；
-   解法 = 对象图区间按句柄反查修正对象，或拟合游戏 XML 增长曲线。
-4. 外交/幸福度/宗教块的字段语义标定（块结构已可遍历，数值含义待截图对账）。
+1. **七项产量每回合值**：Yields/YieldIncomes 等 26 个 `[7][句柄]` 列表指向修正对象 DAG
+   （对象图节点形状已部分破解，见 phase2-cities.md §1）；面板值 174.6/9.0 等运行时算出。
+   解法 = 反汇编 CityYields 求值函数，或按节点 class hash 聚类拟合算子。
+2. **增长阈值公式（U2）**：同上，Threshold/Base/Percent/Discount 句柄 → DAG。
+3. **幸福度分档值**：Unhappiness/SuplusHappiness 句柄 → 同一 DAG 体系。
+4. **0x402 容器形边界**：Properties/Components/Constructibles 等无计数前缀；
+   定界后可解建筑清单与玩家实例块 ID/Civilization 字段。
+5. **大裸区容器**：字符串调色板与地图图元区——非 VariantValue 编码，含地形/视野原始数据。
+6. 外交/宗教块的字段语义标定（块结构已可遍历，数值含义待截图对账）。
 
 历史方法备忘：游戏内打开面板截图记录可见数值，与存档二进制做差分对账（E1/E0 单操作差分
 是最强工具——20 个差异区间即全部状态变化）。

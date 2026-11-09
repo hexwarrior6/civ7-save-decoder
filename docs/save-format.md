@@ -129,7 +129,8 @@ MOD_SHIPYARD_UNIT_PRODUCTION: Domain=DOMAIN_SEA, Percent=10       ← 船坞海�
 
 ## 5. 已知未解
 
-- FXS 属性包的二进制值结构（VariantValue 序列化）——阻塞了城市人口、单位、外交态度的逐城读取
+- ~~FXS 属性包的二进制值结构~~ 已解（§6）；城市人口/增长/归属已可逐城读取（Phase2，见 docs/notes/phase2-cities.md）。
+  剩余：七项产量/增长阈值/幸福分档 = 修正对象 DAG 运行时计算，公式未解
 - 名人堂详细记录的分隔符——多城数据堆叠问题的最后一步
 - 玩家当前生效政策列表（运行时哈希态）
 
@@ -200,8 +201,11 @@ TurnLastNotifyStarving / NextGrowthFoodThreshold(Base) / UnitTypeFoodMods /
 AllUnitTypesFoodMod / PercentGrowthAfterWorkerPlacement / PercentGrowthAfterRuralPlacement /
 OverGrowthCount / TurnLastGrowth / lastTurnConsidered / NextGrowthFoodTresholdDiscount。
 
-雅典（第一个块）CurrentFood = 42214/256 = **164.898 = 面板 339.5 − 174.6**（存档在回合4
-开始时点，面板在回合中，差值 = 一回合食物）✓。注意部分 size-4 块存的是递增引用索引
+~~雅典（第一个块）CurrentFood = 42214/256 = 164.898~~
+**更正（Phase2, 2026-11-09）**：当前 body_modern.bin 中 44 个增长块 CurrentFood **全部 = 0**、
+TurnLastGrowth=1，42214 全文不存在（仅 3 处 id 巧合）。上述 164.898 读数无法复现，
+疑为当时误读或另一存档文件；E0（远古档，无时代过渡）CurrentFood 读数正常（圣彼得堡 40.0 ✓）。
+详见 docs/notes/phase2-cities.md §7。注意部分 size-4 块存的是递增引用索引
 （105423..105428 连号）而非数值，需按字段区分。
 
 **城市运行时记录**：`[u32 keyLen]["LOC_CITY_NAME_GREECE1"][FXSBLKED]` 后紧跟值序列：
