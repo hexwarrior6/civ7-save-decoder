@@ -1,6 +1,6 @@
 # 解析进度详情
 
-> 按存档物理顺序逐区域逐字段的解析状态。更新于 2026-11-12（Phase4 外交完成）；基础数据基于 AutoSave_02_0001.Civ7Save（现代时代 t1）与远古档 E0/E1/E5.1/E5.2。
+> 按存档物理顺序逐区域逐字段的解析状态。更新于 2026-11-12（Phase5 科技/传统/遗产/生产/政策完成）；基础数据基于 AutoSave_02_0001.Civ7Save（现代时代 t1）与远古档 E0/E1/E5.1/E5.2/E2/E6/E7。
 
 ## 存档物理结构
 
@@ -102,6 +102,13 @@
 | **外交修正值（Phase4）** | ✅ | 13f 块 DiplomaticModifiers 等 6 数组=[64][64×u32]，E0/E2 全 0 |
 | **外交事件表（Phase4）** | ✅/⚠️ | ActiveDiplomacyEventsV2=[count][事件]：E2 追加 A=12=开放边界 ✓；其余 type_a→动作名未标定 |
 | **外交关系提取器 tools/diplomacy.py（Phase4）** | ✅ | `python3 -I tools/diplomacy.py <body.bin> <out.json>`；E0/E2/MODERN 0 解析失败；详见 docs/notes/phase4-diplomacy.md |
+| **科技树进度块（Phase5）** | ✅/⚠️ | 8f 块(K=d60fd288)：Tree=TREE_TECHS_AQ、LastCompletedNode=CRC→NODE_TECH_AQ_*（人类=POTTERY ✓截图）、ScienceOverflow FP8（人类0.75）；TargetTech 恒-1——当前研究方向在对象图（选科技=+250 节点，映射未解 U5.2）；"已完成科技列表"无落盘 |
+| **文化树/传统块（Phase5）** | ✅ | 33f 块(K=86eb5a88)：Trees[2]、UnlockedTraditions CRC→TRADITION_*（E0 人类 3 条全反查）、MainTree/ActiveTree、LastCompletedNode、**TargetCultureNode=所选市政**（人类=CODE_OF_LAWS ✓、AI=None 原因未定证）、ActiveGovernment=GOVERNMENT_*（人类 DESPOTISM/AI CLASSICAL_REPUBLIC）、CultureSlots=激活传统槽（含传统 CRC，现代档反查成功） |
+| **遗产路径块（Phase5）** | ✅/⚠️ | 15f 块(K=418d123e)=逐玩家模板（31 块仅 2 种内容）：SettlementCountScoringItems VP=2征服/1非征服 与 DB 定义吻合、MilestonesAchieved=12×(hash,flag)；**运行时 VP 不落盘**（建城差分仅 TownsFounded+1）；E0 面板 8/12/8 与存档统计不符（U5.1） |
+| **政策卡块（Phase5）** | ⚠️ | 8f 块(ent1=AvailableCards)：远古档 Cards/AvailableCards 全 0（无政策卡）；HistoricalLegacyPoints=6×(hash,句柄) 未反查；激活传统槽=CultureSlots 已解；现代档卡列表在对象图未解 |
+| **生产队列/城区建造（Phase5）** | ✅/⚠️ | 城区块(18f) Constructibles=[count][n×(state,id_lo,id_hi,c)]，(n,n+1)=建造物实例序号（每玩家序列：宫0/城区1-5/祭坛6/图拉中心7，三档交叉验证）；当前生产记录=宗教块→产量块间隙模式提取（E7 祭坛 ✓）；完成回合无落盘（⏱6 为显示值）；多项目队列在未定界容器内（U3b） |
+| **进度提取器 tools/progress.py（Phase5）** | ✅ | `python3 -I tools/progress.py <body.bin> <out.json>`；科技/传统/遗产/金库/军事统计/政策卡/城市/城区/生产；E0+E2/E5.1/E5.2/E6/E7+MODERN 七档跑通；详见 docs/notes/phase5-progress.md |
+| **三重差分方法论（Phase5）** | ✅ | E2/E6/E7 三份"E0退档重存"档对 E0 玩家区(175块)做序列对齐+逐字节字段比较：共同变化=漂移、独有=操作效果；walk 树差分的 82 处"变化"绝大多数为容器截断伪差异（弃用） |
 | 单位经验 Level | ❌ | Experience=直读 Int ✓；Level=blob4 句柄（~138k）对象图无标量节点，公式未解 | |
 | 玩家实例块（56 字段） | ✅ | ID/IsAlive/Civilization 等 |
 | 引用句柄 vs 数值（size-4 块） | ✅ | U1 关闭：按字段语义+连号+图区间二次确认，见 phase1-unknowns.md |
@@ -111,6 +118,10 @@
 | 幸福度分档值（"愉快"0~20） | ❌ | Unhappiness/SuplusHappiness=句柄；图中无 0~20 标量（值域 1–10） |
 | 建筑清单（逐城） | ❌ | Constructibles 0x402 容器未定界；建造编年史逐城归属分隔符未解 |
 | 增长阈值面板值（149/4614） | ❌ | 运行时由句柄对象计算，落盘无原值；公式未还原（U2） |
+| **当前研究方向（科技）/已完成科技列表** | ❌ | 科技块 TargetTech 恒 -1；选科技=对象图 +250 节点（定义索引引用，节点语法未解）（U5.2，Phase5） |
+| **遗产路径运行时 VP（面板 8/12/8）** | ❌ | 15f 块=模板无进度；VP 运行时计算；E0 面板数值与存档逐玩家统计不符（U5.1，Phase5） |
+| **生产队列完成回合 / 多项目队列** | ❌ | 无落盘原值；队列容器未定界，当前/最近项可按间隙模式提取（U5.5，Phase5） |
+| **当前生效政策卡列表（现代档）** | ❌ | 政策=卡（Cards）运行时哈希态；远古档无卡；激活传统槽已解（CultureSlots，Phase5） |
 
 ### 5. 已知的格式怪癖
 
@@ -142,6 +153,10 @@
    与 WarInitiator=63−行 反转读法二义）、type_a→动作名、外交事件记录全字段、宗教块。
 7. **外交事件全字段解码**：事件 = [A][3][-1][1][1][需求hash列表…+尾部]，A=12=开放边界已证；
    需求 hash 与 DB RequirementSet 对齐后可还原每个协议的完整语义。
+8. **Phase5 新增（2026-11-12，见 docs/notes/phase5-progress.md）**：
+   对象图节点语法扩展——选科技在图中实例化 ~250 节点（class 0x184ea6c8/0xae9ba3b4 两类，
+   以定义索引引用科技）；节点→科技/市政名映射是"当前研究方向""已完成科技列表"的钥匙；
+   遗产路径运行时 VP 的存储位置（或证实为纯运行时）；生产队列容器定界。
 
 历史方法备忘：游戏内打开面板截图记录可见数值，与存档二进制做差分对账（E1/E0 单操作差分
 是最强工具——20 个差异区间即全部状态变化）。
