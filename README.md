@@ -39,10 +39,9 @@
 <tr><td>建城顺序表（城名 + 坐标）</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>建造编年史（逐建筑逐改良）</td><td align="center">⚠️</td><td>条目全可读；相邻城记录没分隔符，逐城归属分不清</td></tr>
 <tr><td>创始人记录</td><td align="center">⚠️</td><td>键已定位，值结构未解</td></tr>
-<tr><td rowspan="4"><strong>城市</strong></td><td>位置 / 名字 / 归属（含易手历史）</td><td align="center">✅</td><td>—</td></tr>
+<tr><td rowspan="3"><strong>城市</strong></td><td>位置 / 名字 / 归属（含易手历史）</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>人口三分项（乡村 / 市区 / 专家）</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>城市连接、粮食库存、当前排产任务</td><td align="center">✅</td><td>—</td></tr>
-<tr><td>排产剩余回合数</td><td align="center">❌</td><td>存档没写这个数</td></tr>
 <tr><td rowspan="2"><strong>单位</strong></td><td>类型 / 归属 / 位置 / 血量 / 移动力 / 朝向 / 经验</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>单位等级 Level</td><td align="center">⚠️</td><td>是个对象编号，没解出数值</td></tr>
 <tr><td rowspan="4"><strong>外交</strong></td><td>开放边境（逐对）/ 关系分 / 影响力余额与令牌</td><td align="center">✅</td><td>—</td></tr>
@@ -56,9 +55,9 @@
 <tr><td rowspan="6"><strong>地图</strong></td><td>每格 地形 / 生物群系 / 大洲 / 地貌 / 道路 / 海拔</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>资源分布（26 种逐格）与自然奇观位置</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>每格有无单位 / 城市</td><td align="center">✅</td><td>—</td></tr>
-<tr><td>迷雾开过哪些格</td><td align="center">❌</td><td>只有"开了多少格"的计数，位图没找到</td></tr>
+<tr><td>迷雾</td><td align="center">⚠️</td><td>"开了多少格"能读；逐格位图没找到，可能压根没存</td></tr>
 <tr><td>每格标志位（u14~u47）</td><td align="center">⚠️</td><td>原样输出，语义没全弄清</td></tr>
-<tr><td>地物缓存 1.16 MB + 静态区 375 KB</td><td align="center">❌</td><td>未解</td></tr>
+<tr><td>地物缓存 1.16 MB + 静态区 375 KB</td><td align="center">❌</td><td>未解；疑似引擎可再生的缓存，价值存疑</td></tr>
 <tr><td rowspan="3"><strong>其他</strong></td><td>玩家资源库存（马 / 铁等持有量）</td><td align="center">⚠️</td><td>块能读，还没做成输出表</td></tr>
 <tr><td>宗教</td><td align="center">⚠️</td><td>单位宗教块在；城市传播没做</td></tr>
 <tr><td>字符串调色板（7 段 × 41 KB）</td><td align="center">❌</td><td>未解</td></tr>
