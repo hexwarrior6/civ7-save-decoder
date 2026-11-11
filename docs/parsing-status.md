@@ -1,6 +1,6 @@
 # 解析进度详情
 
-> 按存档物理顺序逐区域逐字段的解析状态。更新于 2026-11-12（Phase3 单位完成）；基础数据基于 AutoSave_02_0001.Civ7Save（现代时代 t1）与远古档 E0/E1/E5.1/E5.2。
+> 按存档物理顺序逐区域逐字段的解析状态。更新于 2026-11-12（Phase4 外交完成）；基础数据基于 AutoSave_02_0001.Civ7Save（现代时代 t1）与远古档 E0/E1/E5.1/E5.2。
 
 ## 存档物理结构
 
@@ -94,7 +94,15 @@
 | **单位类型 Type CRC 反查（Phase3）** | ✅ | DB 快照 grep UNIT_* + _NAME 剥离 + 游戏本体 XML 补查（UNIT_SLINGER）；SCOUT/SETTLER/WARRIOR/MIGRANT/GALLEY/SLINGER 全命中 |
 | **单位归属（Phase3）** | ✅ | 实例无 Owner 字段；归属=最近前置玩家实例块 ID（=slot）；E0 31 玩家 0..30+63，24-29 死亡城邦无单位 ✓ |
 | **HasMoved 语义（Phase3）** | ✅ | =本回合已消耗移动力；E0 64/69 True=AI 已行动、人类+刚出厂=False；记录镜像移动力 335/357 一致 |
-| 单位经验 Level | ❌ | Experience=直读 Int ✓；Level=blob4 句柄（~138k）对象图无标量节点，公式未解 |
+| **外交关系块组（Phase4）** | ✅ | 78f 影响力块(K=00000005)+15f 余额块(K=7d74610f)+18f 全局战争块(K=dced693c)+13f 修正块+16f 部落块+3f 协议块，每玩家定位完毕 |
+| **开放边界状态位（Phase4）** | ✅ | HasOpenBordersFrom=64×u8/玩家块，bit[X]=1 ⇒ X 对我开放边界；E2 差分唯一变化 slot0.bit[4]=1（诺曼）✓；宗主单向/大文明双向（现代档 11 对）✓ |
+| **影响力余额（Phase4）** | ✅ | DiplomacyBalance FP8 直读：E0 slot0=80.0 ✓顶栏；E2=55.0=80−25（开放边界标价 25）✓；城邦=0 |
+| **战争/和平矩阵（Phase4）** | ✅ | AtWar 三角阵 [2016][C(64,2)×8B]；E0/E2 实体 0-29 之间全部和平 ✓；行 40-57 条目 + WarInitiator=63−行 模式见 phase4 §3.2（语义未定证） |
+| **同盟/友谊/关系分（Phase4）** | ✅ | IsAllied/HasDeclaredFriendship/IsInDefensivePact 全 0（无同盟）；RelationshipLevel=64×FP8 对称（俄-诺 25.0、阿-诺 11.0、波-法 3.0）；5 级等级名阈值未标定 |
+| **外交修正值（Phase4）** | ✅ | 13f 块 DiplomaticModifiers 等 6 数组=[64][64×u32]，E0/E2 全 0 |
+| **外交事件表（Phase4）** | ✅/⚠️ | ActiveDiplomacyEventsV2=[count][事件]：E2 追加 A=12=开放边界 ✓；其余 type_a→动作名未标定 |
+| **外交关系提取器 tools/diplomacy.py（Phase4）** | ✅ | `python3 -I tools/diplomacy.py <body.bin> <out.json>`；E0/E2/MODERN 0 解析失败；详见 docs/notes/phase4-diplomacy.md |
+| 单位经验 Level | ❌ | Experience=直读 Int ✓；Level=blob4 句柄（~138k）对象图无标量节点，公式未解 | |
 | 玩家实例块（56 字段） | ✅ | ID/IsAlive/Civilization 等 |
 | 引用句柄 vs 数值（size-4 块） | ✅ | U1 关闭：按字段语义+连号+图区间二次确认，见 phase1-unknowns.md |
 | **对象图节点语法（Phase2 部分破解）** | ⚠️ | 节点=[tag][id][hashA][t2]…[id-again]；标量节点(FP8)/零值节点/引用载荷已验证；流级语法与节点 class 语义未解 |
@@ -129,7 +137,11 @@
 4. **0x402 容器形边界**：Properties/Components/Constructibles 等无计数前缀；
    定界后可解建筑清单与玩家实例块 ID/Civilization 字段。
 5. **大裸区容器**：字符串调色板与地图图元区——非 VariantValue 编码，含地形/视野原始数据。
-6. 外交/宗教块的字段语义标定（块结构已可遍历，数值含义待截图对账）。
+6. ~~外交/宗教块的字段语义标定~~ **Phase4 外交已解**（开放边界/余额/战争矩阵/关系分/修正值，
+   见 docs/notes/phase4-diplomacy.md）；剩余：AtWar/HasMet 矩阵 slot 映射定证（行 40-57 条目
+   与 WarInitiator=63−行 反转读法二义）、type_a→动作名、外交事件记录全字段、宗教块。
+7. **外交事件全字段解码**：事件 = [A][3][-1][1][1][需求hash列表…+尾部]，A=12=开放边界已证；
+   需求 hash 与 DB RequirementSet 对齐后可还原每个协议的完整语义。
 
 历史方法备忘：游戏内打开面板截图记录可见数值，与存档二进制做差分对账（E1/E0 单操作差分
 是最强工具——20 个差异区间即全部状态变化）。
