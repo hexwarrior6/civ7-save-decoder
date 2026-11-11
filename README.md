@@ -10,7 +10,7 @@
 请帮我分析这个文明7存档文件。
 
 按以下步骤操作：
-1. 克隆工具仓库：git clone https://github.com/YOUR_USERNAME/civ7-save-decoder.git
+1. 克隆工具仓库：git clone https://github.com/hexwarrior6/civ7-save-decoder.git
 2. 阅读 civ7-save-decoder/AGENTS.md 了解工具用法和已知限制
 3. 运行 python3 civ7-save-decoder/tools/pipeline.py "我的存档文件路径"
 4. 基于 AGENTS.md 中描述的数据格式，提取并分析：
@@ -20,7 +20,7 @@
 5. 给我一份完整的战局分析报告
 ```
 
-> 将 `YOUR_USERNAME` 替换为实际的 GitHub 用户名，将 `"我的存档文件路径"` 替换为你的 .Civ7Save 文件路径。
+> 把 `"我的存档文件路径"` 换成你的 .Civ7Save 文件路径就行。
 
 ## 解析进度（字段级清单）
 
@@ -28,46 +28,38 @@
 
 <table>
 <thead>
-<tr><th width="42%">数据</th><th width="8%" align="center">状态</th><th>缺口说明</th></tr>
+<tr><th width="12%">类别</th><th width="40%">数据</th><th width="8%" align="center">状态</th><th>缺口说明</th></tr>
 </thead>
 <tbody>
-<tr><td colspan="3"><strong>基本信息</strong></td></tr>
-<tr><td>时代 / 回合 / 日期 / 速度 / 难度 / 地图尺寸 / 对局编号</td><td align="center">✅</td><td>—</td></tr>
+<tr><td rowspan="2"><strong>基本信息</strong></td><td>时代 / 回合 / 日期 / 速度 / 难度 / 地图尺寸 / 对局编号</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>文明名单（领袖 / 文明 / 人类还是 AI / 存活 / 队伍）</td><td align="center">✅</td><td>—</td></tr>
-<tr><td colspan="3"><strong>历史记录</strong></td></tr>
-<tr><td>逐回合 × 逐文明 科技 / 文化 / 金币 / 分数 曲线</td><td align="center">✅</td><td>—</td></tr>
+<tr><td rowspan="6"><strong>历史记录</strong></td><td>逐回合 × 逐文明 科技 / 文化 / 金币 / 分数 曲线</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>宣战 / 夺城 / 失城 / 击杀（谁、哪回合）</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>奇观 / 建城 / 城区 / 建筑 累计数</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>建城顺序表（城名 + 坐标）</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>建造编年史（逐建筑逐改良）</td><td align="center">⚠️</td><td>条目全可读；相邻城记录没分隔符，逐城归属分不清</td></tr>
 <tr><td>创始人记录</td><td align="center">⚠️</td><td>键已定位，值结构未解</td></tr>
-<tr><td colspan="3"><strong>城市</strong></td></tr>
-<tr><td>位置 / 名字 / 归属（含易手历史）</td><td align="center">✅</td><td>—</td></tr>
+<tr><td rowspan="4"><strong>城市</strong></td><td>位置 / 名字 / 归属（含易手历史）</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>人口三分项（乡村 / 市区 / 专家）</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>城市连接、粮食库存、当前排产任务</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>排产剩余回合数</td><td align="center">❌</td><td>存档没写这个数</td></tr>
-<tr><td colspan="3"><strong>单位</strong></td></tr>
-<tr><td>类型 / 归属 / 位置 / 血量 / 移动力 / 朝向 / 经验</td><td align="center">✅</td><td>—</td></tr>
+<tr><td rowspan="2"><strong>单位</strong></td><td>类型 / 归属 / 位置 / 血量 / 移动力 / 朝向 / 经验</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>单位等级 Level</td><td align="center">⚠️</td><td>是个对象编号，没解出数值</td></tr>
-<tr><td colspan="3"><strong>外交</strong></td></tr>
-<tr><td>开放边境（逐对）/ 关系分 / 影响力余额与令牌</td><td align="center">✅</td><td>—</td></tr>
+<tr><td rowspan="4"><strong>外交</strong></td><td>开放边境（逐对）/ 关系分 / 影响力余额与令牌</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>同盟 / 宣布友谊 / 防御条约状态位</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>外交动作流水</td><td align="center">⚠️</td><td>动作类型目前只认出"开放边境"一种</td></tr>
 <tr><td>战争状态矩阵</td><td align="center">⚠️</td><td>数据在；行列对应哪个文明还没定死</td></tr>
-<tr><td colspan="3"><strong>科技与文化</strong></td></tr>
-<tr><td>政体 / 所选市政 / 已解锁传统 / 科研溢出</td><td align="center">✅</td><td>—</td></tr>
+<tr><td rowspan="4"><strong>科技与文化</strong></td><td>政体 / 所选市政 / 已解锁传统 / 科研溢出</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>最后完成的科技 / 市政</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>已完成科技全清单</td><td align="center">⚠️</td><td>只读出最后完成的一个</td></tr>
 <tr><td>正在研究的科技名字</td><td align="center">❌</td><td>存档里只有一串编号</td></tr>
-<tr><td colspan="3"><strong>地图</strong></td></tr>
-<tr><td>每格 地形 / 生物群系 / 大洲 / 地貌 / 道路 / 海拔</td><td align="center">✅</td><td>—</td></tr>
+<tr><td rowspan="6"><strong>地图</strong></td><td>每格 地形 / 生物群系 / 大洲 / 地貌 / 道路 / 海拔</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>资源分布（26 种逐格）与自然奇观位置</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>每格有无单位 / 城市</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>迷雾开过哪些格</td><td align="center">❌</td><td>只有"开了多少格"的计数，位图没找到</td></tr>
 <tr><td>每格标志位（u14~u47）</td><td align="center">⚠️</td><td>原样输出，语义没全弄清</td></tr>
 <tr><td>地物缓存 1.16 MB + 静态区 375 KB</td><td align="center">❌</td><td>未解</td></tr>
-<tr><td colspan="3"><strong>其他</strong></td></tr>
-<tr><td>玩家资源库存（马 / 铁等持有量）</td><td align="center">⚠️</td><td>块能读，还没做成输出表</td></tr>
+<tr><td rowspan="3"><strong>其他</strong></td><td>玩家资源库存（马 / 铁等持有量）</td><td align="center">⚠️</td><td>块能读，还没做成输出表</td></tr>
 <tr><td>宗教</td><td align="center">⚠️</td><td>单位宗教块在；城市传播没做</td></tr>
 <tr><td>字符串调色板（7 段 × 41 KB）</td><td align="center">❌</td><td>未解</td></tr>
 </tbody>
@@ -78,7 +70,7 @@
 ## 快速开始（手动）
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/civ7-save-decoder.git
+git clone https://github.com/hexwarrior6/civ7-save-decoder.git
 python3 civ7-save-decoder/tools/pipeline.py "你的存档.Civ7Save"
 ```
 
