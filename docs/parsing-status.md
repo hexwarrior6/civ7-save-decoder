@@ -1,6 +1,6 @@
 # 解析进度详情
 
-> 按存档物理顺序逐区域逐字段的解析状态。更新于 2026-11-09，基于 AutoSave_02_0001.Civ7Save（现代时代 t1）。
+> 按存档物理顺序逐区域逐字段的解析状态。更新于 2026-11-12（Phase3 单位完成）；基础数据基于 AutoSave_02_0001.Civ7Save（现代时代 t1）与远古档 E0/E1/E5.1/E5.2。
 
 ## 存档物理结构
 
@@ -89,6 +89,12 @@
 | **城市提取器 tools/cities.py（Phase2）** | ✅ | `python3 -I tools/cities.py <body.bin> <out.json>`；名字/坐标/人口/增长/归属/连接数；详见 docs/notes/phase2-cities.md |
 | 单位块（47 字段：位置/朝向/视野/HP） | ✅ | Location blob8=(x,y)、MovesRemaining FP8=3/3 ✓、Damage=0→HP100 |
 | 单位命令缓存块（14 字段镜像） | ✅ | Location/MovesRemaining/HasMoved 与单位块一致 |
+| **单位提取器 tools/units.py（Phase3）** | ✅ | `python3 -I tools/units.py <body.bin> <out.json>`；类型/归属/位置/HP/移动力/朝向/has_moved/经验全解；E0 69 单位、E5 89 单位 0 解析失败；详见 docs/notes/phase3-units.md |
+| **单位组语法（Phase3）** | ✅ | 玩家实例→Units 块→Units 容器=N×[组前缀+实例 47f+战斗/移动/宗教/经验/奖励子块]；Formations 容器=每单位 1 条 14 字段命令记录 |
+| **单位类型 Type CRC 反查（Phase3）** | ✅ | DB 快照 grep UNIT_* + _NAME 剥离 + 游戏本体 XML 补查（UNIT_SLINGER）；SCOUT/SETTLER/WARRIOR/MIGRANT/GALLEY/SLINGER 全命中 |
+| **单位归属（Phase3）** | ✅ | 实例无 Owner 字段；归属=最近前置玩家实例块 ID（=slot）；E0 31 玩家 0..30+63，24-29 死亡城邦无单位 ✓ |
+| **HasMoved 语义（Phase3）** | ✅ | =本回合已消耗移动力；E0 64/69 True=AI 已行动、人类+刚出厂=False；记录镜像移动力 335/357 一致 |
+| 单位经验 Level | ❌ | Experience=直读 Int ✓；Level=blob4 句柄（~138k）对象图无标量节点，公式未解 |
 | 玩家实例块（56 字段） | ✅ | ID/IsAlive/Civilization 等 |
 | 引用句柄 vs 数值（size-4 块） | ✅ | U1 关闭：按字段语义+连号+图区间二次确认，见 phase1-unknowns.md |
 | **对象图节点语法（Phase2 部分破解）** | ⚠️ | 节点=[tag][id][hashA][t2]…[id-again]；标量节点(FP8)/零值节点/引用载荷已验证；流级语法与节点 class 语义未解 |
@@ -110,6 +116,10 @@
 ## 突破方向
 
 **Phase2 后剩余瓶颈（按价值排序）**：
+
+0. **单位经验 Level**：经验块 Level=blob4 句柄 → 对象图无标量/零值节点命中（phase3，见
+   phase3-units.md §10）；节点可能是"晋升树实例"引用载荷，需扩展对象图节点语法。
+0b. **FacingDirection 方向名 / AIType 取值表 / OriginCityID 编码**：原值可读，语义未标定。
 
 1. **七项产量每回合值**：Yields/YieldIncomes 等 26 个 `[7][句柄]` 列表指向修正对象 DAG
    （对象图节点形状已部分破解，见 phase2-cities.md §1）；面板值 174.6/9.0 等运行时算出。
