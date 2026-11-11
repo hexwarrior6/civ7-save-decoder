@@ -65,24 +65,27 @@ chunk 格式：`[marker u32][type u32][pad u32][data]`
 
 ### 3.2 城市详细记录
 
-名人堂块中还包含每座城市的**建筑/改良/奇观完整清单**（按建造顺序），结构：
+名人堂第 2 块 = 玩家对象表 + 城市注册表 + 编年史事件流 + 聚合序列
+（**BatchA 2026-11-12 全解**，证据字节见 docs/notes/batchA-chronicle.md）：
 
 ```
-[04 00 00 00]['City'][valueLen][LOC_CITY_NAME_X]    ← 城市名
-[07 00 00 00]['Founder'][...]                        ← 建立者
-[0b 00 00 00]['TurnFounded'][...]                    ← 建造回合 ×N
-[14 00 00 00]['BuildingsBuiltByType']
-    [04 00 00 00][u32]                               ← 未知字段
-    [12 00 00 00]['BUILDING_X']                      ← 建筑类型
-    [01 01 00 00 00 00 00 00 00]                     ← 固定尾部
-[14 00 00 00]['WondersBuiltByType']
-    [valueLen]['WONDER_X']
-...
+[06]['Player']×N
+城市注册表 ×M，每条:
+    [u32 seq][u32 owner]                 ← 8B 前缀, seq=城市对象id(归属键)
+    [04]['City'][nameLen][名字]          ← 注册时快照(可含 {…ugc…} 改名串)
+    [u16 owner][u16 1][u16 idxA][u16 idxB][u32 plot][u64 0]
+[u32 dpCount] + dpCount × DataPoint      ← 编年史事件流
+[u32 seriesCount] + 聚合序列             ← 每条 [键][(u32 回合,u32 值)×N]
+
+DataPoint = [keyLen][key][f0][f1][valLen][val][tag u8][i64]   (tag=1 → i64 在)
 ```
 
-**已知问题**：相邻城市记录之间的分隔符格式未完全破解——部分城市的记录没有独立的 `City` 键，导致逐城归属在连续段落中混淆（多城数据堆叠）。
-
-**变通方案**：用 plot u32 值（`struct.pack('<I', plot)`）在 GAME_SUMMARY 区外全文搜索引用次数，确认定居点存活。
+**逐城归属（原"无分隔符"悬案的答案）**：每条 DataPoint 的 `f0` = 城市 seq，
+与注册表 PRE 的 seq 对上即得 名字/归属/坐标。`TurnFounded`/`City` 的 i64 = 建城回合
+（与 REPLAYDATASET_TOTALCITIESBUILT (civ,turn,256) 互证）。键语义：
+BuildingsBuiltByType/WondersBuiltByType/Player/Religion/LOC_RELIGION_* → 注册表城；
+DistrictsBuiltByType/UnitsTrainedByType/UnitsLost → 预置城邦（seq 1..12，无注册表条目）；
+`Founder[f0][f1=f0-1]`（tag=0，无 i64，定长 32B）= 宗教创立标记（仅 MODERN）。
 
 ### 3.3 城市名池
 
@@ -131,7 +134,8 @@ MOD_SHIPYARD_UNIT_PRODUCTION: Domain=DOMAIN_SEA, Percent=10       ← 船坞海�
 
 - ~~FXS 属性包的二进制值结构~~ 已解（§6）；城市人口/增长/归属已可逐城读取（Phase2，见 docs/notes/phase2-cities.md）。
   剩余：七项产量/增长阈值/幸福分档 = 修正对象 DAG 运行时计算，公式未解
-- 名人堂详细记录的分隔符——多城数据堆叠问题的最后一步
+- ~~名人堂详细记录的分隔符~~ 已解（BatchA，§3.2 + docs/notes/batchA-chronicle.md）；
+  剩余：Founder 的 f1 语义、主文明城区/练兵不落盘于编年史、尾部聚合序列逐条解析
 - 玩家当前生效政策列表（运行时哈希态）
 
 ## 6. FXS 属性包（FXSBLKED / DelineatedData）——已破解

@@ -56,8 +56,8 @@
 | 回放数据集（24 个 REPLAYDATASET） | ✅ | 科技/文化/金币逐回合×逐文明 |
 | 战争/夺城/失城/击杀事件 | ✅ | 12 字节记录 (256,文明,回合) |
 | 奇观/建城/城区/建筑累计 | ✅ | t1 快照 + 增量 |
-| 建造编年史（全游戏逐建筑逐改良） | ⚠️ | 条目全部可读，逐城归属的分隔符未破解 |
-| 创始人记录（Founder 字段值） | ⚠️ | 键定位✅，值结构未解 |
+| **建造编年史（全游戏逐建筑逐改良）** | ✅ | **BatchA 已解**：DataPoint=[键][f0=城seq][f1][val][tag][i64]，注册表 seq=归属键零冲突；`python3 -I tools/chronicle.py <body> <out>`；详见 docs/notes/batchA-chronicle.md |
+| **创始人记录（Founder 字段值）** | ✅ | **BatchA 已解**：[Founder][f0][f1=f0-1][空值][tag=0] 定长 32B=宗教创立标记（仅 MODERN 6 条）；城的建城者=注册表 owner（存档时归属），建城者原主 cross-check cities.py |
 
 ### 3. 数据库定义快照 — ✅ 按需可查
 
@@ -102,7 +102,7 @@
 | **外交修正值（Phase4）** | ✅ | 13f 块 DiplomaticModifiers 等 6 数组=[64][64×u32]，E0/E2 全 0 |
 | **外交事件表（Phase4）** | ✅/⚠️ | ActiveDiplomacyEventsV2=[count][事件]：E2 追加 A=12=开放边界 ✓；其余 type_a→动作名未标定 |
 | **外交关系提取器 tools/diplomacy.py（Phase4）** | ✅ | `python3 -I tools/diplomacy.py <body.bin> <out.json>`；E0/E2/MODERN 0 解析失败；详见 docs/notes/phase4-diplomacy.md |
-| **科技树进度块（Phase5）** | ✅/⚠️ | 8f 块(K=d60fd288)：Tree=TREE_TECHS_AQ、LastCompletedNode=CRC→NODE_TECH_AQ_*（人类=POTTERY ✓截图）、ScienceOverflow FP8（人类0.75）；TargetTech 恒-1——当前研究方向在对象图（选科技=+250 节点，映射未解 U5.2）；"已完成科技列表"无落盘 |
+| **科技树进度块（Phase5）** | ✅/⚠️ | 8f 块(K=d60fd288)：Tree=TREE_TECHS_AQ、LastCompletedNode=CRC→NODE_TECH_AQ_*（人类=POTTERY ✓截图）、ScienceOverflow FP8（人类0.75，下一回合被研究消耗）；**TargetTech=手动选择的研究方向（BatchA 修正）**：现代档人类=NODE_TECH_MO_MASS_PRODUCTION ✓、AI 恒-1（自动不落盘，与 TargetCultureNode 人类有值/AI=None 同构）；远古档含选科技档恒-1（U-A2） |
 | **文化树/传统块（Phase5）** | ✅ | 33f 块(K=86eb5a88)：Trees[2]、UnlockedTraditions CRC→TRADITION_*（E0 人类 3 条全反查）、MainTree/ActiveTree、LastCompletedNode、**TargetCultureNode=所选市政**（人类=CODE_OF_LAWS ✓、AI=None 原因未定证）、ActiveGovernment=GOVERNMENT_*（人类 DESPOTISM/AI CLASSICAL_REPUBLIC）、CultureSlots=激活传统槽（含传统 CRC，现代档反查成功） |
 | **遗产路径块（Phase5）** | ✅/⚠️ | 15f 块(K=418d123e)=逐玩家模板（31 块仅 2 种内容）：SettlementCountScoringItems VP=2征服/1非征服 与 DB 定义吻合、MilestonesAchieved=12×(hash,flag)；**运行时 VP 不落盘**（建城差分仅 TownsFounded+1）；E0 面板 8/12/8 与存档统计不符（U5.1） |
 | **政策卡块（Phase5）** | ⚠️ | 8f 块(ent1=AvailableCards)：远古档 Cards/AvailableCards 全 0（无政策卡）；HistoricalLegacyPoints=6×(hash,句柄) 未反查；激活传统槽=CultureSlots 已解；现代档卡列表在对象图未解 |
@@ -118,7 +118,10 @@
 | 幸福度分档值（"愉快"0~20） | ❌ | Unhappiness/SuplusHappiness=句柄；图中无 0~20 标量（值域 1–10） |
 | 建筑清单（逐城） | ❌ | Constructibles 0x402 容器未定界；建造编年史逐城归属分隔符未解 |
 | 增长阈值面板值（149/4614） | ❌ | 运行时由句柄对象计算，落盘无原值；公式未还原（U2） |
-| **当前研究方向（科技）/已完成科技列表** | ❌ | 科技块 TargetTech 恒 -1；选科技=对象图 +250 节点（定义索引引用，节点语法未解）（U5.2，Phase5） |
+| **当前研究方向（科技）** | ⚠️ | TargetTech=手动选择方向：现代档已解（人类=MASS_PRODUCTION ✓）；远古档选科技(E6)全量差分后仅情报块 NumUrban 1→3 独有变化——方向未落盘/落盘点未定证（U-A2，BatchA） |
+| **已完成科技全清单** | ⚠️ | 无落盘 CRC 列表（文化块 UnlockedTraditions 的科技侧等价物不存在）；输出=LastCompletedNode+XML 前置闭包（下界，分支完成项如 E0 人类 SAILING 缺失）；组件 A 组(f2=5)=已实例化节点集与完成集不重合（U-A1，BatchA） |
+| **bag 组件注册表（BatchA）** | ✅/⚠️ | [0x0ab848ce] 记录族：kind2=SYSTEM_TECH 科技节点对象(crc→NODE_TECH_*)、kind3=SYSTEM_CULTURE 市政节点对象、kind5=BUILDING 可解锁建筑对象（E0 人类16/现代档34 栋全反查）；f2=5 A组(每科技1条)/f2=2 B组(解锁行实例,仅AI)；`python3 -I tools/techlist.py <body> <out>`；详见 docs/notes/batchA-tech.md |
+| **DB 定义区 NODE_* CRC 序表（BatchA）** | ✅ | body 头部按定义序(XML Types 序)排列：E0 16 科技表@0x13de5、186 条混合表@0x1739；MODERN 17 科技表@0x13f09、196 条@0x1bed；名字=CRC32 反查（game XML 全标识符）；techlist.py:find_db_crc_tables |
 | **遗产路径运行时 VP（面板 8/12/8）** | ❌ | 15f 块=模板无进度；VP 运行时计算；E0 面板数值与存档逐玩家统计不符（U5.1，Phase5） |
 | **生产队列完成回合 / 多项目队列** | ❌ | 无落盘原值；队列容器未定界，当前/最近项可按间隙模式提取（U5.5，Phase5） |
 | **当前生效政策卡列表（现代档）** | ❌ | 政策=卡（Cards）运行时哈希态；远古档无卡；激活传统槽已解（CultureSlots，Phase5） |
@@ -128,10 +131,11 @@
 
 ### 5. 已知的格式怪癖
 
-- 名人堂在新时代 t1 只注册部分定居点（42/48），别误判为城市被毁
+- 名人堂在新时代 t1 只注册部分定居点（42/48），别误判为城市被毁；注册表名字为注册时快照，换城名后按 plot 对账（BatchA）
 - 回放数据集跨存档逐字节一致，新存档延长回合轴
 - 数据集数值 = ×256 定点数
-- 建造编年史中相邻城市记录无分隔符，需靠其他方式切分
+- ~~建造编年史中相邻城市记录无分隔符~~ **已解（BatchA）**：记录自带 f0=城 seq 归属，无分隔符问题
+- 编年史只登记主文明城的建筑/改良/奇观；预置城邦只有城区/练兵/建城记录（seq<13，无名字）
 - 地图东西环绕（圆柱形），南北不环绕
 - 换时代时城市可能被新文明名池重新登记
 
@@ -158,10 +162,11 @@
    与 WarInitiator=63−行 反转读法二义）、type_a→动作名、外交事件记录全字段、宗教块。
 7. **外交事件全字段解码**：事件 = [A][3][-1][1][1][需求hash列表…+尾部]，A=12=开放边界已证；
    需求 hash 与 DB RequirementSet 对齐后可还原每个协议的完整语义。
-8. **Phase5 新增（2026-11-12，见 docs/notes/phase5-progress.md）**：
-   对象图节点语法扩展——选科技在图中实例化 ~250 节点（class 0x184ea6c8/0xae9ba3b4 两类，
-   以定义索引引用科技）；节点→科技/市政名映射是"当前研究方向""已完成科技列表"的钥匙；
-   遗产路径运行时 VP 的存储位置（或证实为纯运行时）；生产队列容器定界。
+8. **Phase5 新增（2026-11-12，见 docs/notes/phase5-progress.md）——BatchA 修订（batchA-tech.md）**：
+   ~~"选科技=对象图 +250 节点"~~ **更正：+217/+217 X/Y 类节点（0x184ea6c8/0xae9ba3b4）为
+   重存漂移**（E2/E5/E6/E7 五份重存档图区彼此仅 1 字节差）；远古档选科技全量差分后唯一
+   独有变化=情报块 NumUrban 1→3。剩余钥匙=①"选科技后过回合再存"验证 TargetTech 提交时机；
+   ②组件记录 f2 语义与 XML NodeUnlocks 对账；③遗产路径运行时 VP 存储位置；④生产队列定界。
 
 历史方法备忘：游戏内打开面板截图记录可见数值，与存档二进制做差分对账（E1/E0 单操作差分
 是最强工具——20 个差异区间即全部状态变化）。
