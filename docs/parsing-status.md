@@ -122,6 +122,9 @@
 | **遗产路径运行时 VP（面板 8/12/8）** | ❌ | 15f 块=模板无进度；VP 运行时计算；E0 面板数值与存档逐玩家统计不符（U5.1，Phase5） |
 | **生产队列完成回合 / 多项目队列** | ❌ | 无落盘原值；队列容器未定界，当前/最近项可按间隙模式提取（U5.5，Phase5） |
 | **当前生效政策卡列表（现代档）** | ❌ | 政策=卡（Cards）运行时哈希态；远古档无卡；激活传统槽已解（CultureSlots，Phase5） |
+| **地形/地图图元 Plots 数组（Phase6）** | ✅/⚠️ | Plots 块(0x4b8d928f)内 W*H 条自定界记录（常规73B/奇观125B/末条49B）：地形+生物群系+大陆+特征+资源 CRC 反查 100% 命中（E0 26 种资源 278 格、29 种特征、4 大陆、3 自然奇观）；高度场(+12,湖=200)、道路(+31 ROUTE_ROAD)、单位存在位(+41,与 units.py 68/69 吻合)、城心实例 id(+43) 已解；`python3 -I tools/terrain.py <body.bin> <out.json>`；详见 docs/notes/phase6-terrain.md |
+| **探索迷雾位图（Phase6）** | ❌ | 不在 plot 数组（E0/E1 差分仅 +41 单位位变化）；块 b6be9ade 只存 PlotsRevealed 每玩家计数（E0 31 个 164-214，MODERN 785/586/545）；位图本体未找到（下一步：玩家 Properties 容器定界/找揭示新格的差分档） |
+| **FeatureLayoutCache 1.16MB / 0x4d6dd0 375KB / 字符串调色板 7×41KB（Phase6 重定界）** | ❌ | 非地形数据：前两者含 [count=3404] 子数组与 u16 对流（E1 有 ~20B 移动缓存级变化）；调色板=每玩家前缀共享压缩表；均未解 |
 
 ### 5. 已知的格式怪癖
 
@@ -147,7 +150,9 @@
 3. **幸福度分档值**：Unhappiness/SuplusHappiness 句柄 → 同一 DAG 体系。
 4. **0x402 容器形边界**：Properties/Components/Constructibles 等无计数前缀；
    定界后可解建筑清单与玩家实例块 ID/Civilization 字段。
-5. **大裸区容器**：字符串调色板与地图图元区——非 VariantValue 编码，含地形/视野原始数据。
+5. **探索迷雾位图**（Phase6 新增）：plot 数组已解（地形/资源/道路/单位位，见 docs/notes/
+   phase6-terrain.md），迷雾位图本体未找到——每玩家 PlotsRevealed 只有计数；解法=玩家
+   Properties 0x402 容器定界后找 Visibility 组件，或取一对"单位揭示新地块"的差分档。
 6. ~~外交/宗教块的字段语义标定~~ **Phase4 外交已解**（开放边界/余额/战争矩阵/关系分/修正值，
    见 docs/notes/phase4-diplomacy.md）；剩余：AtWar/HasMet 矩阵 slot 映射定证（行 40-57 条目
    与 WarInitiator=63−行 反转读法二义）、type_a→动作名、外交事件记录全字段、宗教块。
