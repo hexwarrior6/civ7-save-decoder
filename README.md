@@ -55,10 +55,10 @@
 <tr><td rowspan="6"><strong>地图</strong></td><td>每格 地形 / 生物群系 / 大洲 / 地貌 / 道路 / 海拔</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>资源分布（26 种逐格）与自然奇观位置</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>每格有无单位 / 城市</td><td align="center">✅</td><td>—</td></tr>
-<tr><td>迷雾</td><td align="center">⚠️</td><td>"开了多少格"能读；逐格位图没找到，可能压根没存</td></tr>
-<tr><td>每格标志位（u14~u47）</td><td align="center">⚠️</td><td>原样输出，语义没全弄清</td></tr>
-<tr><td>地物缓存 1.16 MB + 静态区 375 KB</td><td align="center">❌</td><td>未解；疑似引擎可再生的缓存，价值存疑</td></tr>
-<tr><td rowspan="3"><strong>其他</strong></td><td>玩家资源库存（马 / 铁等持有量）</td><td align="center">⚠️</td><td>块能读，还没做成输出表</td></tr>
+<tr><td>迷雾：每玩家逐格已探索位图</td><td align="center">✅</td><td>计数与位图位数的精确换算没弄清</td></tr>
+<tr><td>每格标志位（u14 / u18 / u39 / 尾区间）</td><td align="center">⚠️</td><td>u42/u47/u17/u16 已定证；其余原样输出</td></tr>
+<tr><td>视野区剩余结构 + 静态区 375 KB</td><td align="center">⚠️</td><td>迷雾数组已从视野区解出；其余 ~30KB/玩家未解</td></tr>
+<tr><td rowspan="3"><strong>其他</strong></td><td>玩家资源库存（手里有什么 / 哪些城在用）</td><td align="center">✅</td><td>个别类别标签对不上 XML</td></tr>
 <tr><td>宗教</td><td align="center">⚠️</td><td>单位宗教块在；城市传播没做</td></tr>
 <tr><td>字符串调色板（7 段 × 41 KB）</td><td align="center">❌</td><td>未解</td></tr>
 </tbody>
