@@ -37,8 +37,8 @@
 <tr><td>宣战 / 夺城 / 失城 / 击杀（谁、哪回合）</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>奇观 / 建城 / 城区 / 建筑 累计数</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>建城顺序表（城名 + 坐标）</td><td align="center">✅</td><td>—</td></tr>
-<tr><td>建造编年史（逐建筑逐改良）</td><td align="center">⚠️</td><td>条目全可读；相邻城记录没分隔符，逐城归属分不清</td></tr>
-<tr><td>创始人记录</td><td align="center">⚠️</td><td>键已定位，值结构未解</td></tr>
+<tr><td>建造编年史（逐城归属的建筑/改良/奇观清单）</td><td align="center">✅</td><td>记录自带归属字段；尾部聚合序列未逐条解</td></tr>
+<tr><td>宗教创立标记（原"创始人记录"悬案）</td><td align="center">✅</td><td>32 字节定长结构，现代档 6 条全解析</td></tr>
 <tr><td rowspan="3"><strong>城市</strong></td><td>位置 / 名字 / 归属（含易手历史）</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>人口三分项（乡村 / 市区 / 专家）</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>城市连接、粮食库存、当前排产任务</td><td align="center">✅</td><td>—</td></tr>
@@ -50,8 +50,8 @@
 <tr><td>战争状态矩阵</td><td align="center">⚠️</td><td>数据在；行列对应哪个文明还没定死</td></tr>
 <tr><td rowspan="4"><strong>科技与文化</strong></td><td>政体 / 所选市政 / 已解锁传统 / 科研溢出</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>最后完成的科技 / 市政</td><td align="center">✅</td><td>—</td></tr>
-<tr><td>已完成科技全清单</td><td align="center">⚠️</td><td>只读出最后完成的一个</td></tr>
-<tr><td>正在研究的科技名字</td><td align="center">❌</td><td>存档里只有一串编号</td></tr>
+<tr><td>已完成科技全清单</td><td align="center">⚠️</td><td>存档无落盘列表，只有"最后完成+前置闭包"下界</td></tr>
+<tr><td>正在研究的科技名字</td><td align="center">⚠️</td><td>现代档人类可读；远古档和 AI 不落盘</td></tr>
 <tr><td rowspan="6"><strong>地图</strong></td><td>每格 地形 / 生物群系 / 大洲 / 地貌 / 道路 / 海拔</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>资源分布（26 种逐格）与自然奇观位置</td><td align="center">✅</td><td>—</td></tr>
 <tr><td>每格有无单位 / 城市</td><td align="center">✅</td><td>—</td></tr>
