@@ -11,7 +11,10 @@
   常规记录 73 B; 自然奇观格 125 B (附加 52 B 奇观数据); 数组最后一条仅 49 B (无尾 24B)。
 - 字段 CRC = CRC32(0xEDB88320, init -1) (复用 propertybag.crc32_name)。
 - 已解字段: 地形/生物群系/大陆/特征(含自然奇观)/资源/道路/单位存在位(u41)/高度场(u12)。
-- 未解: 探索迷雾位图 (不在此数组, 见笔记), 以及若干静态变体字段 (原值输出)。
+- 探索迷雾位图 (BatchA 收尾②已破解): 每玩家一条 3404B 数组 (0/1, 1=已探索), 位于
+  Plots 块之后的视野大区 (E0 0x3364fe 起), 由 extract_explored() 提取, 证据见
+  docs/notes/batchA-misc.md §2。
+- 未解: u14 (平滑静态场) / u18 (6 位掩码) / u39 (半静态小计数) / 尾 24B g-h 的语义, 原值输出。
 """
 import json
 import os
@@ -152,16 +155,17 @@ def parse_plots(body, q, cnt, terr_hashes, d):
             'len': L,
             'wonder': L == 125,
             'elv': struct.unpack_from('<H', row, 12)[0],       # 高度场: 0=海,200=湖,30-140=陆,180=山
-            'v14': struct.unpack_from('<H', row, 14)[0],       # 未解 (静态, 多为 0/100 的倍数)
-            'u16': row[16], 'u17': row[17],                    # 未解 (静态变体)
-            'u18': row[18],                                    # 未解 (6 位内位掩码)
+            'v14': struct.unpack_from('<H', row, 14)[0],       # 未解: 平滑静态场 (空间自相关0.81), 仅陆地+湖非零
+            'u16': row[16],                                    # 岛群标志: 2 ⟺ u17==0 (region0), 否则 0 (两图精确)
+            'u17': row[17],                                    # 地图大区 id: 0=岛群(多blob),1/2=连续大陆区,255=外洋
+            'u18': row[18],                                    # 未解: 6 位掩码 (每 bit 121-135 格, 富集海岸/资源邻接)
             'road': None if roh == NONE32 else d.get(roh, f'unknown:{roh:08x}'),
-            'u39': row[39],                                    # 未解 (0-8 小计数)
+            'u39': row[39],                                    # 未解: 半静态计数 0-30 (建城区格被覆写, 高值集中奇观)
             'unit': row[41],                                   # 单位存在位 (E0 68/69 与 units.py 吻合, 迁民单位除外)
-            'u42': row[42],                                    # 未解: 255=水/山, 0=丘, 1/2=平 (静态)
+            'u42': row[42],                                    # 地形分类: 255=水/山/可航河, 0=丘陵, 1=平地裸, 2=平地湿润植被
             'u43': struct.unpack_from('<H', row, 43)[0],       # 地块上的 城区/城市 实例 id (城市中心非 0)
             'u45': struct.unpack_from('<H', row, 45)[0],
-            'u47': row[47],                                    # bit3=冰雪(海冰/雪山), bit4-6=变体
+            'u47': row[47],                                    # bit3=不可通行(冰/山/THERA/GC/ZJJ/ULURU), bit4-6=u18 bit3/1/2 镜像
             'tail': (list(struct.unpack_from('<8h', row, L - 24))
                      if L >= 73 else None),  # 末 24B: 8 x i16 (3+1 个 (start,end) 区间对) + u32 + u32(=6)
             'g': struct.unpack_from('<I', row, L - 8)[0] if L >= 73 else None,
@@ -169,13 +173,19 @@ def parse_plots(body, q, cnt, terr_hashes, d):
         }
         if L == 125:
             p['wonder_extra'] = row[49:L - 24].hex()
+        # BatchA 收尾③ 定证的语义字段 (证据见 docs/notes/batchA-misc.md §3)
+        p['terrain_class'] = {255: 'water_or_mountain', 0: 'hill', 1: 'flat_bare',
+                              2: 'flat_vegetated'}.get(row[42], f'raw{row[42]}')
+        p['region_id'] = None if row[17] == 255 else row[17]  # 0=岛群, 1/2=连续大陆区
+        p['island_region'] = row[16] == 2
+        p['impassable'] = bool(row[47] >> 3 & 1)
         plots.append(p)
     return plots, starts
 
 
 def scan_plots_revealed(body):
     """每玩家 PlotsRevealed 计数 (块 hash_b6be9ade: Properties/PlotsRevealed:Int/CommanderWarReinforcementCalls)。
-    玩家归属未定证, 仅按文件序输出。值偏移 = 块头24 + schema3x8 + Properties值16 = +64。"""
+    块按文件序 = 玩家实例序 (slot 0..N-1, 含 id=63 的第 31 玩家)。值偏移 = 块头24 + schema3x8 + Properties值16 = +64。"""
     pat = bytes.fromhex('de9abeb601000000ffffffff010000000100000003000000')
     out = []
     i = 0
@@ -185,6 +195,39 @@ def scan_plots_revealed(body):
             break
         out.append(struct.unpack_from('<I', body, j + 64)[0])
         i = j + 1
+    return out
+
+
+def extract_explored(body, scan_lo=0x2e0000, scan_hi=0xd80000):
+    """BatchA 收尾②已破解: 每玩家探索迷雾 = 逐格 3404B 字节数组 (0/1, 1=已探索),
+    位于 Plots 块之后 / 玩家实例区之前的视野大区 (E0 0x3364fe 起, 步长 ~0x92D9/玩家)。
+    记录 = [u32 k][u32 2][u32 k][u32 pc][u8 flag][u32 3404][3404 字节] (前 5 项按 4B 字节
+    包打包, 3404 为 LE): k = 玩家实例 id (0..29,63), pc = popcount (flag=1 的记录不写, 恒 0,
+    实际数以数组为准), 数据段即位图本体。
+    校验: E0==E1==E2==E6==E7 逐字节一致 (迷雾不随已探索区内移动变化); E0→E5.1 每玩家
+    新增 bit 数 == b6be9ade PlotsRevealed 增量 (24 玩家中 23 个精确相等); 单位位置
+    186/186(MODERN)+69/69(E0) 全部落在本玩家已探索格; 死亡城邦 (从未探索) 全 0。
+    返回 {k: {'offset', 'popcount', 'plots':[...], 'pc_field', 'flag'}}。"""
+    out = {}
+    pos = scan_lo
+    n = min(scan_hi, len(body))
+    while True:
+        j = body.find(struct.pack('<I', 3404), pos, n)
+        if j < 0:
+            break
+        seg = body[j + 4:j + 4 + 3404]
+        if len(seg) == 3404:
+            k = struct.unpack_from('<I', body, j - 9)[0]
+            mid = struct.unpack_from('<I', body, j - 13)[0]
+            if mid == 2 and k < 0x10000 and k not in out and max(seg) <= 3:
+                out[k] = {
+                    'offset': j - 17,
+                    'popcount': sum(1 for b in seg if b),
+                    'pc_field': struct.unpack_from('<I', body, j - 5)[0],
+                    'flag': body[j - 1],
+                    'plots': [i for i, b in enumerate(seg) if b],
+                }
+        pos = j + 1
     return out
 
 
@@ -225,6 +268,21 @@ def main():
                             or pl['biome'].startswith('unknown:')
                             or (pl['feature'] or '').startswith('unknown:')
                             or (pl['resource'] or '').startswith('unknown:'))
+    # --- 探索迷雾位图 (每玩家, BatchA 收尾②) ---
+    explored = extract_explored(body)
+    pr_counts = scan_plots_revealed(body)
+    exp_players = {}
+    pop_eq_pr = 0
+    for idx, k in enumerate(sorted(explored)):
+        e = explored[k]
+        pr = pr_counts[idx] if idx < len(pr_counts) else None
+        if pr is not None and e['popcount'] == pr:
+            pop_eq_pr += 1
+        exp_players[str(k)] = {
+            'offset': f"{e['offset']:#x}", 'popcount': e['popcount'],
+            'plots_revealed_count_same_index': pr,
+            'plots': e['plots'],
+        }
     out = {
         'source': src,
         'map': {'header_offset': p, 'array_offset': q, 'width': w, 'height': h, 'plots': cnt},
@@ -244,12 +302,23 @@ def main():
             'road_plots': sum(1 for pl in plots if pl['road']),
             'unit_present': sum(1 for pl in plots if pl['unit']),
             'wonder_plots': [pl['i'] for pl in plots if pl['wonder']],
+            'terrain_class': counter('terrain_class'),
+            'region_id': {str(k): v for k, v in sorted(counter('region_id').items(), key=lambda kv: str(kv[0]))},
+            'island_region_plots': sum(1 for pl in plots if pl['island_region']),
+            'impassable_plots': sum(1 for pl in plots if pl['impassable']),
         },
         'resources': {k: {'count': len(v), 'plots_xy': v} for k, v in sorted(resources.items(), key=lambda kv: -len(kv[1]))},
         'exploration': {
-            'status': '未解: 每格探索迷雾位图不在此数组 (E0/E1 差分仅 +41 单位位变化); '
-                      '块 hash_b6be9ade 只存 PlotsRevealed 计数。见 phase6-terrain.md 未解项。',
-            'plots_revealed_counts_unordered': scan_plots_revealed(body),
+            'status': '已破解: 每玩家一条 3404B 数组 (0/1, 1=已探索), 记录头 '
+                      '[u32 玩家id][u32 2][u32 玩家id][u32 pc][u8 flag][u32 3404]; '
+                      'key = 玩家实例 id (0..N-1 + 63)。证据: 同局各档逐字节一致; '
+                      'E0→E5.1 每玩家新增格数与 b6be9ade PlotsRevealed 增量 30/31 精确相等; '
+                      '单位位置全落本玩家已探索格 (E0 69/69, MODERN 186/186 有效位); '
+                      '各玩家位图 = 围绕首都的连通区域。见 batchA-misc.md §2。',
+            'players': exp_players,
+            'popcount_eq_plotsrevealed': f'{pop_eq_pr}/{len(explored)} '
+                '(城邦精确相等; 主要文明 popcount>PlotsRevealed, 差额来源未定证)',
+            'plots_revealed_counts_by_index': pr_counts,
         },
         'plots': plots,
     }

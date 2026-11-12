@@ -126,8 +126,10 @@
 | **生产队列完成回合 / 多项目队列** | ❌ | 无落盘原值；队列容器未定界，当前/最近项可按间隙模式提取（U5.5，Phase5） |
 | **当前生效政策卡列表（现代档）** | ❌ | 政策=卡（Cards）运行时哈希态；远古档无卡；激活传统槽已解（CultureSlots，Phase5） |
 | **地形/地图图元 Plots 数组（Phase6）** | ✅/⚠️ | Plots 块(0x4b8d928f)内 W*H 条自定界记录（常规73B/奇观125B/末条49B）：地形+生物群系+大陆+特征+资源 CRC 反查 100% 命中（E0 26 种资源 278 格、29 种特征、4 大陆、3 自然奇观）；高度场(+12,湖=200)、道路(+31 ROUTE_ROAD)、单位存在位(+41,与 units.py 68/69 吻合)、城心实例 id(+43) 已解；`python3 -I tools/terrain.py <body.bin> <out.json>`；详见 docs/notes/phase6-terrain.md |
-| **探索迷雾位图（Phase6）** | ❌ | 不在 plot 数组（E0/E1 差分仅 +41 单位位变化）；块 b6be9ade 只存 PlotsRevealed 每玩家计数（E0 31 个 164-214，MODERN 785/586/545）；位图本体未找到（下一步：玩家 Properties 容器定界/找揭示新格的差分档） |
-| **FeatureLayoutCache 1.16MB / 0x4d6dd0 375KB / 字符串调色板 7×41KB（Phase6 重定界）** | ❌ | 非地形数据：前两者含 [count=3404] 子数组与 u16 对流（E1 有 ~20B 移动缓存级变化）；调色板=每玩家前缀共享压缩表；均未解 |
+| **探索迷雾位图（Phase6→BatchA 已解）** | ✅/⚠️ | **BatchA 破解**：每玩家一条 3404B 字节数组（0/1，1=已探索），位于 Plots 块后的视野大区（E0 0x3364fe 起，步长 ~0x92D9/玩家）；记录头 [u32 玩家id][u32 2][u32 玩家id][u32 popcount][u8 flag][u32 3404]；terrain.py:extract_explored 已接入输出。证据：E0==E1==E2==E6==E7 逐字节一致；E0→E5.1 每玩家新增格数==PlotsRevealed 增量（30/31）；单位落点全在本玩家已探索格（E0 69/69、MODERN 186/186）；各玩家位图=围绕首都的连通区域。⚠️ PlotsRevealed 精确语义（主要文明 popcount>计数 +30~43）与每玩家 ~34KB 其余视野结构未解；详见 docs/notes/batchA-misc.md §2 |
+| **玩家资源库存（BatchA 新增）** | ✅/⚠️ | 块 0x926896f2 "Resources" 16 字段/每玩家：AvailableResourceCounts=[55 句柄]→对象图 FP8 节点（hA==下标强签名 1705/1705+1045/1045）；资源名=DB 定义区 55 项 CRC 序表（E0 @0x165e5）+内置回退；Assignments=[count][n×20B (plot,amount)] 与地图资源交叉 11/11+191/191、距首都 ≤3 格；ResourceClassCounts 3 类[BONUS,CITY,EMPIRE]类别和对账 31/31。⚠️ Assignments 尾 u32、逐城分配列表节点、MODERN 4 类语义未解。`python3 -I tools/resources.py <body.bin> <out.json>`；详见 docs/notes/batchA-misc.md §1 |
+| **地形标志位 u14~u47（BatchA 部分定证）** | ✅/⚠️ | **已定证并写入 terrain.py named 字段**：u42=地形游戏分类（255=水/山/可航河、0=丘陵、1=平地裸、2=平地湿润植被，FLAT 863 精确二分 428+435）；u47.bit3=不可通行（ICE∪MOUNT∪{ULURU/THERA/GRAND_CANYON/ZHANGJIAJIE}，两图 6 奇观全验）；u47.bit4-6=u18 bit3/1/2 逐格镜像（135/135,128/128,121/121）；u17=地图大区 id（0=岛群/1,2=连续大陆区/255=外洋，两图 blob 检验同构）；u16=岛群标志（2 ⟺ u17==0）。⚠️ u14（平滑静态场 r=0.81）/u18（6 位掩码，方向位假设已排除）/u39（半静态计数，建城覆写，奇观高值）/尾 24B g-h（h=河流 id 已排除）语义未定证，原值+画像保留；详见 docs/notes/batchA-misc.md §3 |
+| **FeatureLayoutCache 1.16MB / 0x4d6dd0 375KB / 字符串调色板 7×41KB（Phase6 重定界）** | ⚠️/❌ | **更正（BatchA）：0x3364e9 起 1.16MB 区的首个结构=每玩家探索迷雾位图（已解，见上）**，该区应改称"视野大区"，其余 ~34KB/玩家的视野结构未解；0x4d6dd0 375KB 静态区与调色板仍 ❌ 未解 |
 
 ### 5. 已知的格式怪癖
 
@@ -154,9 +156,9 @@
 3. **幸福度分档值**：Unhappiness/SuplusHappiness 句柄 → 同一 DAG 体系。
 4. **0x402 容器形边界**：Properties/Components/Constructibles 等无计数前缀；
    定界后可解建筑清单与玩家实例块 ID/Civilization 字段。
-5. **探索迷雾位图**（Phase6 新增）：plot 数组已解（地形/资源/道路/单位位，见 docs/notes/
-   phase6-terrain.md），迷雾位图本体未找到——每玩家 PlotsRevealed 只有计数；解法=玩家
-   Properties 0x402 容器定界后找 Visibility 组件，或取一对"单位揭示新地块"的差分档。
+5. ~~探索迷雾位图~~ **BatchA 已解**（每玩家 3404B 位图在视野大区，terrain.py:extract_explored；
+   见 docs/notes/batchA-misc.md §2）；剩余：视野大区每玩家 ~34KB 其余结构（疑当前可见层）、
+   PlotsRevealed 精确语义、k=63 蛮族位图归属。
 6. ~~外交/宗教块的字段语义标定~~ **Phase4 外交已解**（开放边界/余额/战争矩阵/关系分/修正值，
    见 docs/notes/phase4-diplomacy.md）；剩余：AtWar/HasMet 矩阵 slot 映射定证（行 40-57 条目
    与 WarInitiator=63−行 反转读法二义）、type_a→动作名、外交事件记录全字段、宗教块。
